@@ -1,4 +1,4 @@
-#include "graphic_processor.h"
+#include "gpu_lib.h"
 #include <stdio.h>
 
 int main() {
