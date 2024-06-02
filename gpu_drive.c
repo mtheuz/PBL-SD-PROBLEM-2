@@ -84,7 +84,7 @@ static int device_release(struct inode *inodep, struct file *filep) {
     return 0;
 }
 
-static ssize_t device_write(struct file *filep, const char *buffer, size_t len, loff_t *offset) {
+static ssize_t device_write(struct file *filep, const char *buffer, size_t len) {
     unsigned char command[9]; 
 
     if (len < 4 || len > 9) {
