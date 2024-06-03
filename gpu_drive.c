@@ -10,8 +10,8 @@
 #define DATA_A  0x80
 #define DATA_B  0x70
 #define START 0xc0
-#define LW_BRIDGE_BASE 0xFF200000 //MUDAR
-#define LW_BRIDGE_SPAN 0x00200000 //MUDAR
+#define LW_BRIDGE_BASE 0xFF200000 
+#define LW_BRIDGE_SPAN 0x00005000 
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Matheus Mota, Pedro Henrique, Dermeval Neves");
@@ -37,7 +37,6 @@ void send_instruction(volatile int opcode, volatile int dados) {
     *DATA_A_PTR = opcode;
     *DATA_B_PTR = dados;
     *START_PTR = 1;
-    *START_PTR = 0;
 }
 
 void instrucao_wbr(int reg, int r, int g, int b, int x, int y, int sp) {
@@ -127,6 +126,7 @@ static int __init module_init(void) {
 }
 
 static void __exit my_module_exit(void) {
+    *START_PTR = 0;
     iounmap(LW_virtual);
     printk(KERN_INFO "Módulo descarregado\n");
 }
