@@ -3,7 +3,7 @@
 #include <unistd.h>
 #include <stdio.h>
 
-#define DEVICE_PATH "../gpu_driver.c"
+#define DEVICE_PATH "/dev/gpu_drive.c"
 #define WBR 0x00
 #define WBM 0x01
 #define WSM 0x02

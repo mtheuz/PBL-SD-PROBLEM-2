@@ -1,7 +1,10 @@
 #include <linux/module.h>
 #include <linux/init.h>
-#include <linux/io.h>
 #include <linux/fs.h>
+#include <linux/uaccess.h>
+#include <linux/device.h>
+#include <linux/cdev.h>
+#include <linux/io.h>
 
 #define WBR 0x00
 #define WBM 0x01
@@ -16,6 +19,12 @@
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Matheus Mota, Pedro Henrique, Dermeval Neves");
 MODULE_DESCRIPTION("Módulo de exemplo para envio de instruções");
+
+// Declaração de variáveis globais
+static int major_number;
+static struct class* gpu_class = NULL;
+static struct device* gpu_device = NULL;
+static struct cdev gpu_cdev;
 
 volatile int *START_PTR;
 volatile int *DATA_A_PTR;
@@ -33,10 +42,11 @@ static struct file_operations fops = {
 };
 
 void send_instruction(volatile int opcode, volatile int dados) {
-    *START_PTR = 0;
-    *DATA_A_PTR = opcode;
-    *DATA_B_PTR = dados;
-    *START_PTR = 1;
+    iowrite32(0, START_PTR);  // Zerar o registrador de início
+    iowrite32(opcode, DATA_A_PTR);  // Escrever o código de operação no registrador de dados A
+    iowrite32(data, DATA_B_PTR);  // Escrever os dados no registrador de dados B
+    iowrite32(1, START_PTR);  // Sinalizar início da operação para a GPU
+    iowrite32(0, START_PTR);  // Limpar o sinal de início após a operação
 }
 
 void instrucao_wbr(int reg, int r, int g, int b, int x, int y, int sp) {
@@ -118,18 +128,52 @@ static ssize_t device_write(struct file *filep, const char *buffer, size_t len) 
 
 static int __init module_init(void) {
     LW_virtual = ioremap(LW_BRIDGE_BASE, LW_BRIDGE_SPAN);
+    major_number = register_chrdev(0, DEVICE_NAME, &fops);
+    if (major_number < 0) {
+        printk(KERN_ALERT "Falha ao registrar um número principal\n");
+        return major_number;
+    }
+
+    gpu_class = class_create(THIS_MODULE, CLASS_NAME);
+    if (IS_ERR(gpu_class)) {
+        unregister_chrdev(major_number, DEVICE_NAME);
+        printk(KERN_ALERT "Falha ao registrar a classe do dispositivo\n");
+        return PTR_ERR(gpu_class);
+    }
+
+    gpu_device = device_create(gpu_class, NULL, MKDEV(major_number, 0), NULL, DEVICE_NAME);
+    if (IS_ERR(gpu_device)) {
+        class_destroy(gpu_class);
+        unregister_chrdev(major_number, DEVICE_NAME);
+        printk(KERN_ALERT "Falha ao criar o dispositivo\n");
+        return PTR_ERR(gpu_device);
+    }
+
+    LW_virtual = ioremap(LW_BRIDGE_BASE, LW_BRIDGE_SPAN);
+    if (!LW_virtual) {
+        device_destroy(gpu_class, MKDEV(major_number, 0));
+        class_unregister(gpu_class);
+        class_destroy(gpu_class);
+        unregister_chrdev(major_number, DEVICE_NAME);
+        printk(KERN_ALERT "Falha ao mapear a memória\n");
+        return -ENOMEM;
+    }
+
     DATA_A_PTR = (volatile int *) (LW_virtual + DATA_A);
     DATA_B_PTR = (volatile int *) (LW_virtual + DATA_B);   
     START_PTR = (volatile int *) (LW_virtual + START);
-    printk(KERN_INFO "Módulo carregado\n");
+    
+    printk(KERN_INFO "Módulo carregado: classe do dispositivo criada corretamente\n");
     return 0;
 }
 
 static void __exit my_module_exit(void) {
-    *START_PTR = 0;
     iounmap(LW_virtual);
+    device_destroy(gpu_class, MKDEV(major_number, 0));
+    class_unregister(gpu_class);
+    class_destroy(gpu_class);
+    unregister_chrdev(major_number, DEVICE_NAME);
     printk(KERN_INFO "Módulo descarregado\n");
-}
 
 module_init(my_module_init);
 module_exit(my_module_exit);
