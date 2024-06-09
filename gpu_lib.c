@@ -9,20 +9,37 @@
 #define WSM 0x02
 #define DP  0x03
 
-
-int set_background_color(int R, int G, int B) {
+int set_background_color (int R, int G, int B) {
     int fd = open(DEVICE_PATH, O_WRONLY);
+
     if (fd < 0) {
         perror("Failed to open the device");
         return -1;
     }
-    unsigned char command[9] = { 'WBR', 0, R, G, B, 0, 0, 0 };
-    if (write(fd, command, sizeof(command)) != sizeof(command)) {
-        perror("Failed to write the command");
+
+    unsigned char command[9] = {0};
+    int reg = 0b00000; // Register number (5 bits)
+    //int r = 0b111;     // Red color value (3 bits)
+    //int g = 0b000;     // Green color value (3 bits)
+    //int b = 0b000;     // Blue color value (3 bits)
+
+    // Construct the command
+    command[0] = 0; // Reserved for future use
+    command[1] = reg;
+    command[2] = R;
+    command[3] = G;
+    command[4] = B;
+    
+    // Write the command to the device
+    if (write(fd, command, sizeof(command)) < 0) {
+        perror("Failed to write to the device");
         close(fd);
-        return -1;
+        return 0;
     }
 
+    printf("Command sent to device: register=%d, r=%d, g=%d, b=%d\n", reg, R, G, B);
+
     close(fd);
-    return 0;
+
+    return 1;
 }
