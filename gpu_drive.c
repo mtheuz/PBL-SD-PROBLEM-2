@@ -1,10 +1,11 @@
 #include <linux/module.h>
 #include <linux/init.h>
+#include <asm/io.h>
 #include <linux/fs.h>
-#include <linux/uaccess.h>
+#include <asm/uaccess.h>
+#include <linux/kernel.h>
 #include <linux/device.h>
 #include <linux/cdev.h>
-#include <linux/io.h>
 
 #define WBR 0x00
 #define WBM 0x01
@@ -16,8 +17,11 @@
 #define LW_BRIDGE_BASE 0xFF200000 
 #define LW_BRIDGE_SPAN 0x00005000 
 
+#define DEVICE_NAME "gpu_driver"
+#define CLASS_NAME "gpudriver_class"
+
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Matheus Mota, Pedro Henrique, Dermeval Neves");
+MODULE_AUTHOR("Matheus Mota, Pedro Henrique e Dermeval Neves");
 MODULE_DESCRIPTION("Módulo de exemplo para envio de instruções");
 
 // Declaração de variáveis globais
@@ -31,6 +35,7 @@ volatile int *DATA_A_PTR;
 volatile int *DATA_B_PTR;
 void __iomem *LW_virtual;
 
+
 static int device_open(struct inode *inodep, struct file *filep);
 static int device_release(struct inode *inodep, struct file *filep);
 static ssize_t device_write(struct file *filep, const char *buffer, size_t len, loff_t *offset);
@@ -42,24 +47,31 @@ static struct file_operations fops = {
 };
 
 void send_instruction(volatile int opcode, volatile int dados) {
-    iowrite32(0, START_PTR);  // Zerar o registrador de início
-    iowrite32(opcode, DATA_A_PTR);  // Escrever o código de operação no registrador de dados A
-    iowrite32(data, DATA_B_PTR);  // Escrever os dados no registrador de dados B
-    iowrite32(1, START_PTR);  // Sinalizar início da operação para a GPU
-    iowrite32(0, START_PTR);  // Limpar o sinal de início após a operação
+    /*START_PTR = 0;
+    *DATA_A_PTR = opcode;
+    *DATA_B_PTR = dados;
+    *START_PTR = 1;*/
+
+    iowrite32(0, START_PTR);
+    iowrite32(opcode, DATA_A_PTR);
+    iowrite32(dados, DATA_B_PTR);
+    iowrite32(1, START_PTR);
+    iowrite32(0, START_PTR);
 }
 
-void instrucao_wbr(int reg, int r, int g, int b, int x, int y, int sp) {
+//FUNÇÃO PSEUDO-FUNCIONAL
+void instrucao_wbr(int reg, int b, int g, int r, int x, int y, int sp) {
     volatile int opcode = WBR; // Opcode para WBR
-    volatile int dados = (b << 16) | (g << 8) | r;
-    volatile int opcode_reg = (opcode << 5) | (reg << 0);
+    volatile int dados = (b << 6) | (g << 3) | r;
+    volatile int opcode_reg = (opcode << 5) | reg ;
     opcode_reg |= (x << 4) | y;
     if (sp) {
-        opcode_reg |= (1 << 31);
+        opcode_reg |= (1 << 29);
     }
     send_instruction(opcode_reg, dados);
 }
 
+//
 void instrucao_wbm(int address, int r, int g, int b) {
     volatile int opcode = WBM; // Opcode para WBM
     volatile int dados = (b << 16) | (g << 8) | r;
@@ -93,29 +105,29 @@ static int device_release(struct inode *inodep, struct file *filep) {
     return 0;
 }
 
-static ssize_t device_write(struct file *filep, const char *buffer, size_t len) {
+static ssize_t device_write(struct file *filep, const char *buffer, size_t len, loff_t *offset)  {
     unsigned char command[9]; 
 
-    if (len < 4 || len > 9) {
+    if (len < 5 || len > 9) {
         printk(KERN_ALERT "Comprimento de comando inválido\n");
         return -EINVAL;
     }
 
-    if (copy_from_user(command, buffer, 9)) {
+    if (copy_from_user(&command, buffer, sizeof(command))) {
         return -EFAULT;
     }
 
     switch (command[0]) {
-        case "WBR":
+        case 0:
             instrucao_wbr(command[1], command[2], command[3], command[4], command[5], command[6], command[7]);
             break;
-        case "WBM":
+        case 1:
             instrucao_wbm(command[1], command[2], command[3], command[4]);
             break;
-        case "WSM":
+        case 2:
             instrucao_wsm(command[1], command[2], command[3], command[4]);
             break;
-        case "DP":
+        case 3:
             instrucao_dp(command[1], command[2], command[3], command[4], command[5], command[6], command[7], command[8]);
             break;
         default:
@@ -126,9 +138,13 @@ static ssize_t device_write(struct file *filep, const char *buffer, size_t len) 
     return len;
 }
 
-static int __init module_init(void) {
+
+static int __init my_module_init(void) {
     LW_virtual = ioremap(LW_BRIDGE_BASE, LW_BRIDGE_SPAN);
     major_number = register_chrdev(0, DEVICE_NAME, &fops);
+
+    printk(KERN_INFO "por favor\n");
+
     if (major_number < 0) {
         printk(KERN_ALERT "Falha ao registrar um número principal\n");
         return major_number;
@@ -141,6 +157,7 @@ static int __init module_init(void) {
         return PTR_ERR(gpu_class);
     }
 
+    printk(KERN_INFO "Módulo carregado: classe do dispositivo criada corretamente\n");
     gpu_device = device_create(gpu_class, NULL, MKDEV(major_number, 0), NULL, DEVICE_NAME);
     if (IS_ERR(gpu_device)) {
         class_destroy(gpu_class);
@@ -159,13 +176,14 @@ static int __init module_init(void) {
         return -ENOMEM;
     }
 
+
     DATA_A_PTR = (volatile int *) (LW_virtual + DATA_A);
     DATA_B_PTR = (volatile int *) (LW_virtual + DATA_B);   
     START_PTR = (volatile int *) (LW_virtual + START);
     
-    printk(KERN_INFO "Módulo carregado: classe do dispositivo criada corretamente\n");
     return 0;
 }
+
 
 static void __exit my_module_exit(void) {
     iounmap(LW_virtual);
@@ -175,9 +193,8 @@ static void __exit my_module_exit(void) {
     unregister_chrdev(major_number, DEVICE_NAME);
     printk(KERN_INFO "Módulo descarregado\n");
 
-module_init(my_module_init);
-module_exit(my_module_exit);
-
 }
 
 
+module_init(my_module_init);
+module_exit(my_module_exit);
