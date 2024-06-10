@@ -63,21 +63,16 @@ void send_instruction(volatile int opcode, volatile int dados) {
 void instrucao_wbr(int reg, int b, int g, int r, int x, int y, int sp) {
     volatile int opcode = WBR; // Opcode para WBR
     volatile int dados = (b << 6) | (g << 3) | r;
-    volatile int opcode_reg = (opcode << 5) | reg ;
-    opcode_reg |= (x << 4) | y;
-    if (sp) {
-        opcode_reg |= (1 << 29);
-    }
+    volatile int opcode_reg = (opcode << 4) | reg ;
     send_instruction(opcode_reg, dados);
 }
 
 void instrucao_wbr_sprite(int reg, int offset, int x, int y, int sp) {
     volatile int opcode = WBR; // Opcode para WBR
-    volatile int opcode_reg = (opcode << 5) | reg ;
-    volatile int dados = offset;
-    opcode_reg |= (x << 9) | y;
+    volatile int opcode_reg = (opcode << 4) | reg ;
+    volatile int dados = offset | (y << 9) | (x << 19); 
     if (sp) {
-        opcode_reg |= (1 << 29);
+        dados |= (1 << 29);
     }
     send_instruction(opcode_reg, dados);
 }
@@ -85,8 +80,8 @@ void instrucao_wbr_sprite(int reg, int offset, int x, int y, int sp) {
 //
 void instrucao_wbm(int address, int r, int g, int b) {
     volatile int opcode = WBM; // Opcode para WBM
-    volatile int dados = (b << 16) | (g << 8) | r;
-    volatile int opcode_reg = (address << 14) | opcode;
+    volatile int dados = (b << 6) | (g << 3) | r;
+    volatile int opcode_reg = ((address & 0x3FFF) << 14) | opcode;
     send_instruction(opcode_reg, dados);
 }
 
@@ -97,15 +92,16 @@ void instrucao_wsm(int address, int r, int g, int b) {
     send_instruction(opcode_reg, dados);
 }
 
-//terminar
+
 void instrucao_dp(int address, int ref_x, int ref_y, int size, int r, int g, int b, int shape) {
-    int opcode = DP; // Opcode para DP
-    int instruction = (opcode << 28) | (address << 24) | (ref_x << 16) | (ref_y << 8) | size;
-    instruction |= (r << 16) | (g << 8) | b;
+    volatile int opcode = DP; // Opcode para DP
+    volatile int opcode_reg = (address << 4) | opcode;
+    volatile int rgb = (b << 6) | (g << 3) | r;
+    volatile int dados =  (rgb << 22) | (size << 18) | (ref_y << 9) | ref_x;
     if (shape) {
-        instruction |= (1 << 31);
+        dados |= (1 << 31);
     }
-    send_instruction(instruction, 0); // Assumindo que 'dados' não é usado para DP
+    send_instruction(opcode_reg, dados);
 }
 
 static int device_open(struct inode *inodep, struct file *filep) {
