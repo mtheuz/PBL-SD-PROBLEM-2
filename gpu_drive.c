@@ -74,7 +74,7 @@ void instrucao_wbr(int reg, int b, int g, int r, int x, int y, int sp) {
 void instrucao_wbr_sprite(int reg, int offset, int x, int y, int sp) {
     volatile int opcode = WBR; // Opcode para WBR
     volatile int opcode_reg = (opcode << 5) | reg ;
-    volatile int dados = offset
+    volatile int dados = offset;
     opcode_reg |= (x << 4) | y;
     if (sp) {
         opcode_reg |= (1 << 29);
@@ -133,7 +133,7 @@ static ssize_t device_write(struct file *filep, const char *buffer, size_t len, 
             instrucao_wbr(command[1], command[2], command[3], command[4], command[5], command[6], command[7]);
             break;
         case 1:
-            instrucao_wbr_sprite(command[1], command[2], command[3], command[4]);
+            instrucao_wbr_sprite(command[1], command[2], command[3], command[4], command[5]);
             break;
         case 2:
             instrucao_wbm(command[1], command[2], command[3], command[4]);
