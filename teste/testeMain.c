@@ -48,7 +48,7 @@ int set_background_color (int R, int G, int B) {
 
     return 1;
 }
-int set_sprite(int x, int y, int offset) {
+int set_sprite() {
     int fd = open(DEVICE_PATH, O_WRONLY);
 
     if (fd < 0) {
@@ -65,9 +65,9 @@ int set_sprite(int x, int y, int offset) {
     // Construct the command
     command[0] = 1; // Reserved for future use
     command[1] = reg;
-    command[2] = offset;
-    command[3] = x;
-    command[4] = y;
+    command[2] = 000001010;
+    command[3] = 0000001010;
+    command[4] = 0000001010;
     command[5] = 1;
     
     // Write the command to the device
@@ -86,6 +86,6 @@ int set_sprite(int x, int y, int offset) {
 int main () {
 
     set_background_color(7, 7, 7);
-    set_sprite(10,10,10)
+    set_sprite()
     return 0;
 }
