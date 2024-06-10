@@ -75,7 +75,7 @@ void instrucao_wbr_sprite(int reg, int offset, int x, int y, int sp) {
     volatile int opcode = WBR; // Opcode para WBR
     volatile int opcode_reg = (opcode << 5) | reg ;
     volatile int dados = offset;
-    opcode_reg |= (x << 4) | y;
+    opcode_reg |= (x << 9) | y;
     if (sp) {
         opcode_reg |= (1 << 29);
     }

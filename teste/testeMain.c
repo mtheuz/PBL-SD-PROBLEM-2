@@ -68,6 +68,7 @@ int set_sprite(int x, int y, int offset) {
     command[2] = offset;
     command[3] = x;
     command[4] = y;
+    command[5] = 1;
     
     // Write the command to the device
     if (write(fd, command, sizeof(command)) < 0) {
