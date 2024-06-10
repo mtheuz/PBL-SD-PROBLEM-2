@@ -65,9 +65,9 @@ int set_sprite() {
     // Construct the command
     command[0] = 1; // Reserved for future use
     command[1] = reg;
-    command[2] = 000001010;
-    command[3] = 0000001010;
-    command[4] = 0000001010;
+    command[2] = 000111010;
+    command[3] = 000011101;
+    command[4] = 000001111;
     command[5] = 1;
     
     // Write the command to the device
