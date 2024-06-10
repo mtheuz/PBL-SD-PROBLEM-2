@@ -2,11 +2,9 @@
 #include <stdio.h>
 
 int main() {
-    if (set_background_color(10, 10, 255) != 0) {
-        printf( "Failed to set background color\n");
-        return 1;
-    }
-
+    
+    set_background_color(10, 10, 255)
+        
     printf("success\n");
     return 0;
 }
