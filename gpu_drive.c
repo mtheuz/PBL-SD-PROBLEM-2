@@ -7,10 +7,10 @@
 #include <linux/device.h>
 #include <linux/cdev.h>
 
-#define WBR 0x00
-#define WBM 0x01
-#define WSM 0x02
-#define DP  0x03
+#define WBR 0b00
+#define WBM 0b10
+#define WSM 0b01
+#define DP  0b11
 #define DATA_A  0x80
 #define DATA_B  0x70
 #define START 0xc0
@@ -47,10 +47,6 @@ static struct file_operations fops = {
 };
 
 void send_instruction(volatile int opcode, volatile int dados) {
-    /*START_PTR = 0;
-    *DATA_A_PTR = opcode;
-    *DATA_B_PTR = dados;
-    *START_PTR = 1;*/
 
     iowrite32(0, START_PTR);
     iowrite32(opcode, DATA_A_PTR);
@@ -59,17 +55,17 @@ void send_instruction(volatile int opcode, volatile int dados) {
     iowrite32(0, START_PTR);
 }
 
-//FUNÇÃO PSEUDO-FUNCIONAL
-void instrucao_wbr(int reg, int b, int g, int r, int x, int y, int sp) {
+
+void instrucao_wbr(int b, int g, int r) {
     volatile int opcode = WBR; // Opcode para WBR
     volatile int dados = (b << 6) | (g << 3) | r;
-    volatile int opcode_reg = (opcode << 4) | reg ;
+    volatile int opcode_reg = (opcode);
     send_instruction(opcode_reg, dados);
 }
 
 void instrucao_wbr_sprite(int reg, int offset, int x, int y, int sp) {
     volatile int opcode = WBR; // Opcode para WBR
-    volatile int opcode_reg = (opcode << 4) | reg ;
+    volatile int opcode_reg = (reg << 4) | opcode ;
     volatile int dados = offset | (y << 9) | (x << 19); 
     if (sp) {
         dados |= (1 << 29);
@@ -77,21 +73,19 @@ void instrucao_wbr_sprite(int reg, int offset, int x, int y, int sp) {
     send_instruction(opcode_reg, dados);
 }
 
-//
 void instrucao_wbm(int address, int r, int g, int b) {
     volatile int opcode = WBM; // Opcode para WBM
     volatile int dados = (b << 6) | (g << 3) | r;
-    volatile int opcode_reg = ((address & 0x3FFF) << 14) | opcode;
+    volatile int opcode_reg = (address << 4) | opcode;
     send_instruction(opcode_reg, dados);
 }
 
 void instrucao_wsm(int address, int r, int g, int b) {
     volatile int opcode = WSM; // Opcode para WSM
-    volatile int dados = (b << 16) | (g << 8) | r;
-    volatile int opcode_reg = (address << 16) | opcode;
+    volatile int dados = (b << 6) | (g << 3) | r;
+    volatile int opcode_reg = (address << 4) | opcode;
     send_instruction(opcode_reg, dados);
 }
-
 
 void instrucao_dp(int address, int ref_x, int ref_y, int size, int r, int g, int b, int shape) {
     volatile int opcode = DP; // Opcode para DP
@@ -115,7 +109,7 @@ static int device_release(struct inode *inodep, struct file *filep) {
 static ssize_t device_write(struct file *filep, const char *buffer, size_t len, loff_t *offset)  {
     unsigned char command[9]; 
 
-    if (len < 5 || len > 9) {
+    if (len < 4 || len > 9) {
         printk(KERN_ALERT "Comprimento de comando inválido\n");
         return -EINVAL;
     }
@@ -126,7 +120,7 @@ static ssize_t device_write(struct file *filep, const char *buffer, size_t len, 
 
     switch (command[0]) {
         case 0:
-            instrucao_wbr(command[1], command[2], command[3], command[4], command[5], command[6], command[7]);
+            instrucao_wbr(command[1], command[2], command[3]);
             break;
         case 1:
             instrucao_wbr_sprite(command[1], command[2], command[3], command[4], command[5]);

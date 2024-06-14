@@ -1,3 +1,6 @@
+#ifndef GPU_LIB_H
+#define GPU_LIB_H
+
 #define LEFT 0
 #define RIGHT 4
 #define UP 2
@@ -60,14 +63,13 @@ int set_poligono( int address, int ref_x, int ref_y, int size, int r, int g, int
 /**
  * @brief Usada para modelar o background atraves do preenchimento dos blocos de 8x8 pixels
  * 
- * @param column    Valor da coluna do bloco.
- * @param line      Valor da linha do bloco.
+ * @param adress    Valor da coluna do bloco.
  * @param R         Valor para a cor vermelha.
  * @param G         Valor para a cor verde.
  * @param B         Valor para a cor azul.
  * @return          0 quando a operação não foi realizada, e 1 quando foi bem sucedida
 */
-int set_background_block( int column, int line, int R, int G, int B);
+int set_background_block( int adress, int R, int G, int B);
 
 /**
  * @brief Usada para configurar a cor base do background a partir dos valores de Red, Green e Blue.
@@ -77,7 +79,7 @@ int set_background_block( int column, int line, int R, int G, int B);
  * @param B   Valor para a cor azul.
  * @return    0 quando a operação não foi realizada, e 1 quando foi bem sucedida
 */
-int set_background_color(int R, int G, int B, int fd);
+int set_background_color(int R, int G, int B);
 
 /**
  * @brief Usada para atualizar as coordenadas x e y de um sprit móvel de acordo ao seu ângulo de movimento e valor de deslocamento.
@@ -96,3 +98,5 @@ void increase_coordinate(Sprite *sp, int mirror);
  * @return      1 quando colisão foi detectada e 0 quando não.
 */
 int collision(Sprite *sp1, Sprite *sp2);
+
+#endif
