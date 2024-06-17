@@ -105,6 +105,6 @@ int open_gpu_device ();
 
 int close__gpu_devide ();
 
-int clear_screen();
+void clear_screen();
 
 void teste () ;
