@@ -135,5 +135,16 @@ int set_background_block(int address, int R, int G, int B) {
     return 1;
 }
 
+void draw_horizontal_line(int line, int tam, int R, int G, int B) {
+    int row, col;
+    for (row = line; row < line + tam; row++) {
+        for (col = 0; col < 80; col++) {
+            int line_address = col + (60 * row);
+            et_background_block(line_address, R, G, B);
+        }
+    }
+}
+
+
 
 
