@@ -47,6 +47,10 @@ static struct file_operations fops = {
 };
 
 void send_instruction(volatile int opcode, volatile int dados) {
+    /*START_PTR = 0;
+    *DATA_A_PTR = opcode;
+    *DATA_B_PTR = dados;
+    *START_PTR = 1;*/
 
     iowrite32(0, START_PTR);
     iowrite32(opcode, DATA_A_PTR);
@@ -55,7 +59,7 @@ void send_instruction(volatile int opcode, volatile int dados) {
     iowrite32(0, START_PTR);
 }
 
-
+//FUNÇÃO PSEUDO-FUNCIONAL
 void instrucao_wbr(int b, int g, int r) {
     volatile int opcode = WBR; // Opcode para WBR
     volatile int dados = (b << 6) | (g << 3) | r;
@@ -98,22 +102,6 @@ void instrucao_dp(int address, int ref_x, int ref_y, int size, int r, int g, int
     send_instruction(opcode_reg, dados);
 }
 
-void instrucao_dp(int address, int ref_x, int ref_y, int size, int r, int g, int b, int shape) {
-    // Escalando as coordenadas para 9 bits
-    uint32_t ref_x_scaled = (ref_x * 511) / 639;
-    uint32_t ref_y_scaled = (ref_y * 511) / 479;
-
-    printk("Original ref_x: %d, ref_y: %d\n", ref_x, ref_y);
-    printk("Scaled ref_x: %u, ref_y: %u\n", ref_x_scaled, ref_y_scaled);
-
-    // Calculando opcode_reg e dados
-    uint32_t opcode = DP; // Assumindo que DP é 0x2
-    uint32_t opcode_reg = (address << 4) | opcode;
-    uint32_t rgb = (b << 6) | (g << 3) | r;
-    uint32_t dados = (rgb << 22) | (size << 18) | (ref_y_scaled << 9) | ref_x_scaled;
-    if (shape) {
-        dados |= (1 << 31);
-    }
 static int device_open(struct inode *inodep, struct file *filep) {
     return 0;
 }
@@ -135,24 +123,54 @@ static ssize_t device_write(struct file *filep, const char *buffer, size_t len, 
     }
 
     switch (command[0]) {
-        case 0:
-            instrucao_wbr(command[1], command[2], command[3]);
+        case 0:  {
+            int r = command[1];
+            int g = command[2];
+            int b = command[3];
+            instrucao_wbr(r, g, b);
             break;
-        case 1:
-            instrucao_wbr_sprite(command[1], command[2], command[3], command[4], command[5]);
+        }
+        case 1: {
+            int reg = command[1];
+            int offset = ((command[2] << 1) & 0x1FE) | ((command[3] >> 7) & 0x01); // 9-bit offset
+            int x = ((command[3] << 3) & 0x3F8) | ((command[4] >> 5) & 0x07);     // 10-bit x
+            int y = ((command[4] << 5) & 0x3E0) | ((command[5] >> 3) & 0x1F);     // 10-bit y
+            int sp = command[6];
+            instrucao_wbr_sprite(reg, offset, x, y, sp);
             break;
-        case 2:
-            instrucao_wbm(command[1], command[2], command[3], command[4]);
+        }
+        case 2: {
+            int address = ((command[1] << 4) | (command[2] >> 4)); // 12-bit address
+            int r = command[2];
+            int g = command[3];
+            int b = command[4];
+            instrucao_wbm(address, r, g, b);
             break;
-        case 3:
-            instrucao_wsm(command[1], command[2], command[3], command[4]);
+        }
+        case 3: {
+            int address = (command[1] << 6) | (command[2]); // 14-bit address
+            int r = command[3];
+            int g = command[4];
+            int b = command[5];
+            instrucao_wsm(address, r, g, b);
             break;
-        case 4:
-            instrucao_dp(command[1], command[2], command[3], command[4], command[5], command[6], command[7], command[8]);
+        }
+        case 4: {
+            int address = command[1];
+            int ref_x = ((command[2] << 1) | command[3] >> 7);
+            int ref_y = (((command[3] & 0b1111111) << 2) | command[4] >> 6);
+            int size = command[4] & 0b1111;
+            int r = command[5] >> 5;
+            int g = (command[5] >> 2) & 0b111;
+            int b =  command[6] >> 5;
+            int shape =  command[6] & 0b1;
+            instrucao_dp(address, ref_x, ref_y, size, r, g, b, shape);
             break;
-        default:
+        }
+        default: {
             printk(KERN_ALERT "Comando desconhecido\n");
             return -EINVAL;
+        }
     }
 
     return len;

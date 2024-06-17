@@ -1,121 +1,108 @@
-#include <fcntl.h>
-#include <unistd.h>
 #include <stdio.h>
+#include <fcntl.h>
+//DO LINUX
+#include <unistd.h>
 #include "gpu_lib.h"
 
-#define DEVICE_PATH "/dev/gpu_driver"
+int fd = 0;
 
-int set_background_color (int R, int G, int B) {
-    int fd = open(DEVICE_PATH, O_WRONLY);
+// ================= AVISO ====================
+// SE NÂO FUNCIONAR ESSA FUNÇÃO, VAI TER QUE ABRIR E FECHAR O ARQUIVO DENTRO DE CADA FUNÇÃO
+int open_gpu_device () {
+    fd = open(DEVICE_PATH, O_WRONLY);
 
     if (fd < 0) {
         perror("Failed to open the device");
-        return -1;
+        return 0;
     }
+    return 1;
+}
 
-    unsigned char command[9] = {0};
-    int reg = 0b00000; // Register number (5 bits)
-    //int r = 0b111;     // Red color value (3 bits)
-    //int g = 0b000;     // Green color value (3 bits)
-    //int b = 0b000;     // Blue color value (3 bits)
+int close__gpu_devide () {
+    close(fd);
+}
 
-    // Construct the command
-    command[0] = 0; // Reserved for future use
-    command[1] = B;
+int set_background_color (int R, int B, int G) {
+    unsigned char command[4];
+
+    command[0] = 0;
+    command[1] = R;
     command[2] = G;
-    command[3] = R;
-    
-    // Write the command to the device
+    command[3] = B;
+
     if (write(fd, command, sizeof(command)) < 0) {
         perror("Failed to write to the device");
-        close(fd);
         return 0;
     }
 
-    printf("Command sent to device: register=%d, r=%d, g=%d, b=%d\n", reg, R, G, B);
-
-    close(fd);
-
     return 1;
-
 }
 
-int set_sprite(int registrador, int x, int y, int offset, int sp) {
-    int fd = open(DEVICE_PATH, O_WRONLY);
+int set_sprite( int reg, int x, int y, int offset, int sp){
+    unsigned char command[7];
 
-    if (fd < 0) {
-        perror("Failed to open the device");
-        return -1;
-    }
+    command[0] = 1;
+    command[1] = reg;
+    command[2] = (offset >> 1) & 0xFF;
+    command[3] = ((offset & 0x01) << 7) | ((x >> 3) & 0x7F);
+    command[4] = ((x & 0x07) << 5) | ((y >> 5) & 0x1F);
+    command[5] = (y & 0x1F) << 3;
+    command[6] = sp;
 
-    unsigned char command[9] = {0};
-
-    // Construct the command
-    command[0] = 1; // Reserved for future use
-    command[1] = registrador;
-    command[2] = offset;
-    command[3] = x;
-    command[4] = y;
-    command[5] = sp;
-    
-    // Write the command to the device
     if (write(fd, command, sizeof(command)) < 0) {
         perror("Failed to write to the device");
-        close(fd);
         return 0;
     }
 
-    printf("Command sent to device: register=%d, offset=%d, x=%d, y=%d\n", registrador, offset, x, y);
-
-    close(fd);
     return 1;
 }
 
-int set_poligono(int address, int ref_x, int ref_y, int size, int r, int g, int b, int shape) {
+int set_poligono( int address, int ref_x, int ref_y, int size, int r, int g, int b, int shape){
+    unsigned char command[7];
 
-    int fd = open(DEVICE_PATH, O_WRONLY);
+    command[0] = 4; 
+    command[1] = address; 
+    command[2] = ref_x >> 1; 
+    command[3] = ((ref_x & 0b01) << 7) | (ref_y >> 2); 
+    command[4] = ((ref_y & 0b11) << 6) | (size & 0b1111);
+    command[5] = ((r & 0b111)<< 5) | (g & 0b111) << 2; 
+    command[6] = ((b &0b111) << 5) | shape & 0b1;
 
-    if (fd < 0) {
-        perror("Failed to open the device");
-        return -1;
-    }
-
-    unsigned char command[9] = {0};
-
-    // Construct the command
-    command[0] = 4;  // DP
-    command[1] = address;
-    command[2] = ref_x;
-    command[3] = ref_y;
-    command[4] = size;
-    command[5] = r;
-    command[6] = g;
-    command[7] = b;
-    command[8] = shape;
-    
-    // Write the command to the device
     if (write(fd, command, sizeof(command)) < 0) {
         perror("Failed to write to the device");
-        close(fd);
         return 0;
     }
-    printf("Command sent to device: address=%d, ref_x=%d, ref_y=%d, size=%d, r=%d g=%d b=%d shape=%d\n", address, ref_x, ref_y, size,r,g,b,shape );
-    close(fd);
+
     return 1;
 }
 
+int set_background_block( int column, int line, int R, int G, int B){
+    unsigned char command[5];
 
-int set_background_block(int address, int R, int G, int B) {
-    int fd = open(DEVICE_PATH, O_WRONLY);
-
-    if (fd < 0) {
-        perror("Failed to open the device");
-        return -1;
+    int i = 0;
+    int address = 0;
+    for (i; i< line; i++){
+        address += 80;
     }
 
-    unsigned char command[9] = {0};
+    address += column;
 
-    // Construct the command
+    command[0] = 2; 
+    command[1] = (address >> 4); 
+    command[2] = ((address) << 4) | (R & 0b0111); 
+    command[3] = G & 0xFF; 
+    command[4] = B & 0xFF; 
+
+    if (write(fd, command, sizeof(command)) < 0) {
+        perror("Failed to write to the device");
+        return 0;
+    }
+
+    return 1;
+}
+int set_background_block_address(int address, int R, int G, int B) {
+   
+    unsigned char command[5];
     command[0] = 2; // Reserved for future use
     command[1] = address;
     command[2] = R;
@@ -128,23 +115,85 @@ int set_background_block(int address, int R, int G, int B) {
         close(fd);
         return 0;
     }
-    
-    printf("Command sent to device: addres=%d, R=%d, G=%d, B=%d\n", address, R, G, B);
-
-    close(fd);
     return 1;
 }
 
-void draw_horizontal_line(int line, int tam, int R, int G, int B) {
-    int row, col;
-    for (row = line; row < line + tam; row++) {
-        for (col = 0; col < 80; col++) {
-            int line_address = col + (60 * row);
-            et_background_block(line_address, R, G, B);
-        }
+
+
+int set_sprite_pixel_color( int address, int R, int G, int B){
+    unsigned char command[6];
+
+    command[0] = 3; // Command for instrucao_wsm
+    command[1] = (address >> 6); // Higher 8 bits of 14-bit address
+    command[2] = (address & 0b111111); // Lower 6 bits of address and r
+    command[3] = R & 0b111;
+    command[4] = G & 0b111; // g value
+    command[5] = B & 0b111; // b value
+
+    if (write(fd, command, sizeof(command)) < 0) {
+        perror("Failed to write to the device");
+        return 0;
     }
+
+    return 1;
 }
 
+void increase_coordinate(Sprite *sp, int mirror){
+    if ((*sp).direction == LEFT){
+        (*sp).pos_X -= (*sp).step_X;
+    } else if ((*sp).direction == RIGHT){
+        (*sp).pos_X += (*sp).step_X;
+    } else if ((*sp).direction == UP){
+        (*sp).pos_Y -= (*sp).step_Y;
+    } else if ((*sp).direction == DOWN){
+        (*sp).pos_Y += (*sp).step_Y;
+    } else if ((*sp).direction == UPPER_RIGHT){
+        (*sp).pos_Y -= (*sp).step_Y;
+        (*sp).pos_X += (*sp).step_X;
+    } else if ((*sp).direction == UPPER_LEFT){
+        (*sp).pos_Y -= (*sp).step_Y;
+        (*sp).pos_X -= (*sp).step_X;
+    } else if ((*sp).direction == BOTTOM_LEFT){
+        (*sp).pos_Y += (*sp).step_Y;
+        (*sp).pos_X -= (*sp).step_X;
+    } else if ((*sp).direction == BOTTOM_LEFT){
+        (*sp).pos_Y += (*sp).step_Y;
+        (*sp).pos_X += (*sp).step_X;
+    } 
+    int i = set_sprite((*sp).data_register, (*sp).pos_X, (*sp).pos_Y, (*sp).offset, (*sp).enable);
+}
 
+int collision(Sprite *sp1, Sprite *sp2){
+    // Get the opposite vertices
+    int square1_right = (*sp1).pos_X + 20;
+    int square1_bottom = (*sp1).pos_Y - 20;
+    int square2_right = (*sp2).pos_X + 20;
+    int square2_bottom = (*sp2).pos_Y - 20;
 
+    // Check for non-overlapping conditions
+    if ((*sp1).pos_X >= square2_right || (*sp2).pos_X >= square1_right) {
+        return 0;
+    }
+    if ((*sp1).pos_Y <= square2_bottom || (*sp2).pos_Y <= square1_bottom) {
+        return 0;
+    }
 
+    // If none of the non-overlapping conditions are true, they must be overlapping
+    return 1;
+
+}
+
+void clear_screen() {
+    int i;
+    for (i = 0; i < 4800; i++) {
+        set_background_block_address(i, 7, 7, 6);
+    }
+    for (i = 0; i < 16; i++) {
+        set_poligono(i, 0, 0, 1, 0, 7, 0, 0); 
+    }
+
+}
+
+void teste () {
+    printf("oi");
+}
