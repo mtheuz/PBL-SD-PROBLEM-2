@@ -14,6 +14,7 @@
 #define DATA_A  0x80
 #define DATA_B  0x70
 #define START 0xc0
+#define WRFULL 0xb0
 #define LW_BRIDGE_BASE 0xFF200000 
 #define LW_BRIDGE_SPAN 0x00005000 
 
@@ -31,6 +32,7 @@ static struct device* gpu_device = NULL;
 static struct cdev gpu_cdev;
 
 volatile int *START_PTR;
+volatile int *WRFULL_PTR;
 volatile int *DATA_A_PTR;
 volatile int *DATA_B_PTR;
 void __iomem *LW_virtual;
@@ -112,7 +114,8 @@ static int device_release(struct inode *inodep, struct file *filep) {
 
 static ssize_t device_write(struct file *filep, const char *buffer, size_t len, loff_t *offset)  {
     unsigned char command[9]; 
-
+    while (*WRFULL_PTR){};
+    
     if (len < 4 || len > 9) {
         printk(KERN_ALERT "Comprimento de comando inválido\n");
         return -EINVAL;
@@ -218,6 +221,7 @@ static int __init my_module_init(void) {
     DATA_A_PTR = (volatile int *) (LW_virtual + DATA_A);
     DATA_B_PTR = (volatile int *) (LW_virtual + DATA_B);   
     START_PTR = (volatile int *) (LW_virtual + START);
+    WRFULL_PTR = (volatile int *) (LW_virtual + WRFULL);
     
     return 0;
 }
