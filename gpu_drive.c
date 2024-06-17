@@ -98,6 +98,22 @@ void instrucao_dp(int address, int ref_x, int ref_y, int size, int r, int g, int
     send_instruction(opcode_reg, dados);
 }
 
+void instrucao_dp(int address, int ref_x, int ref_y, int size, int r, int g, int b, int shape) {
+    // Escalando as coordenadas para 9 bits
+    uint32_t ref_x_scaled = (ref_x * 511) / 639;
+    uint32_t ref_y_scaled = (ref_y * 511) / 479;
+
+    printk("Original ref_x: %d, ref_y: %d\n", ref_x, ref_y);
+    printk("Scaled ref_x: %u, ref_y: %u\n", ref_x_scaled, ref_y_scaled);
+
+    // Calculando opcode_reg e dados
+    uint32_t opcode = DP; // Assumindo que DP é 0x2
+    uint32_t opcode_reg = (address << 4) | opcode;
+    uint32_t rgb = (b << 6) | (g << 3) | r;
+    uint32_t dados = (rgb << 22) | (size << 18) | (ref_y_scaled << 9) | ref_x_scaled;
+    if (shape) {
+        dados |= (1 << 31);
+    }
 static int device_open(struct inode *inodep, struct file *filep) {
     return 0;
 }
