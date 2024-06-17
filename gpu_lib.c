@@ -186,7 +186,7 @@ int collision(Sprite *sp1, Sprite *sp2){
 void clear_screen() {
     int i;
     for (i = 0; i < 4800; i++) {
-        set_background_block_address(i, 7, 7, 6);
+        set_background_block_address(i, 7, 7, 7);
     }
     for (i = 0; i < 16; i++) {
         set_poligono(i, 0, 0, 1, 0, 7, 0, 0); 
