@@ -107,4 +107,6 @@ int close__gpu_devide ();
 
 void clear_screen();
 
+void clear_poligonos();
+
 void teste () ;
