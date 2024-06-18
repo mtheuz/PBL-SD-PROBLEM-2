@@ -6,6 +6,7 @@
 #include <linux/kernel.h>
 #include <linux/device.h>
 #include <linux/cdev.h>
+#include <linux/delay.h>
 
 #define WBR 0b00
 #define WBM 0b10
@@ -114,7 +115,15 @@ static int device_release(struct inode *inodep, struct file *filep) {
 
 static ssize_t device_write(struct file *filep, const char *buffer, size_t len, loff_t *offset)  {
     unsigned char command[9]; 
-    while (*WRFULL_PTR){};
+   
+    int buffer_gpu = ioread32(WRFULL_PTR);
+    
+    while (buffer_gpu){
+        buffer_gpu = ioread32(WRFULL_PTR);
+        if (buffer_gpu == 0){
+            msleep(130);
+        }
+    };
     
     if (len < 4 || len > 9) {
         printk(KERN_ALERT "Comprimento de comando inválido\n");
@@ -143,8 +152,8 @@ static ssize_t device_write(struct file *filep, const char *buffer, size_t len, 
             break;
         }
         case 2: {
-            int address = ((command[1] << 4) | (command[2] >> 4)); // 12-bit address
-            int r = command[2];
+            int address = ((command[1] << 5) | (command[2] >> 3)); // 12-bit address
+            int r = command[2] & 0b111;
             int g = command[3];
             int b = command[4];
             instrucao_wbm(address, r, g, b);
@@ -240,3 +249,4 @@ static void __exit my_module_exit(void) {
 
 module_init(my_module_init);
 module_exit(my_module_exit);
+
