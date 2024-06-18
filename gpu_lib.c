@@ -78,20 +78,20 @@ int set_poligono( int address, int ref_x, int ref_y, int size, int r, int g, int
 
 int set_background_block( int column, int line, int R, int G, int B){
     unsigned char command[5];
-
+    // 0001 1111 1111 1111 000
     int i = 0;
-    int address = 0;
-    for (i; i< line; i++){
-        address += 80;
-    }
+    int address = column + (line*80);
 
-    address += column;
 
-    command[0] = 2; 
-    command[1] = (address >> 4); 
-    command[2] = ((address) << 4) | (R & 0b0111); 
-    command[3] = G & 0xFF; 
-    command[4] = B & 0xFF; 
+    command[0] = 2;
+    command[1] = (address >> 5);
+    command[2] = ((address) << 3) | R;
+    command[3] = G;
+    command[4] = B;
+
+    //printf("address[1]: %d\n", (R & 0b111));
+    printf("green: %d\n", command[3]);
+    
 
     if (write(fd, command, sizeof(command)) < 0) {
         perror("Failed to write to the device");
@@ -100,6 +100,7 @@ int set_background_block( int column, int line, int R, int G, int B){
 
     return 1;
 }
+
 int set_background_block_address(int address, int R, int G, int B) {
    
     unsigned char command[5];
@@ -183,17 +184,32 @@ int collision(Sprite *sp1, Sprite *sp2){
 
 }
 
-void clear_screen() {
-    int i;
-    for (i = 0; i < 4800; i++) {
-        set_background_block_address(i, 7, 7, 7);
-    }
-    for (i = 0; i < 16; i++) {
-        set_poligono(i, 0, 0, 1, 0, 7, 0, 0); 
-    }
 
+void clear_screen() {
+    int i = 0;
+    int j = 0;
+    for (i; i <60; i++){
+        for (j; j < 80; j++){
+            set_background_block(j, i, 6, 7, 7);
+        }
+        j = 0;
+    }
 }
 
 void teste () {
-    printf("oi");
+    int i = 35;
+    int j = 0;
+    for (i; i <60; i++){
+        for (j; j < 80; j++){
+            set_background_block(j, i, 2, 5, 0);
+        }
+        j = 0;
+    }
+}
+
+void clear_poligonos(){
+    int i = 0;
+    for (i; i < 15; i++){
+        set_poligono(i, 0, 0, 0, 0, 0, 0, 0);
+    }
 }
